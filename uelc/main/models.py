@@ -22,10 +22,17 @@ class Cohort(models.Model):
         return '%s' % (self.name)
 
     def _get_case(self):
-        case = Case.objects.get(cohort=self.id)
+        case = Case.objects.filter(cohort=self.id)
         if not case:
             return None
         return case
+
+    def casename(self):
+        casenames = [case.name.encode(
+            encoding='UTF-8',
+            errors='strict') for case in self.case]
+        nms = ', '.join(casenames)
+        return nms
 
     def _get_users(self):
         upros = UserProfile.objects.filter(
@@ -48,11 +55,6 @@ class Cohort(models.Model):
         class AddForm(forms.Form):
             name = forms.CharField(widget=forms.widgets.Input(
                 attrs={'class': 'add-cohort-name'}))
-            user = forms.ModelChoiceField(
-                widget=forms.SelectMultiple(
-                    attrs={'class': 'user-select'}),
-                queryset=User.objects.all().order_by('username'),
-                empty_label=None)
         return AddForm()
 
     def edit_form(self):
@@ -61,21 +63,12 @@ class Cohort(models.Model):
                 initial=self.name,
                 widget=forms.widgets.Input(
                     attrs={'class': 'edit-cohort-name'}))
-            user = forms.ModelChoiceField(
+            users = forms.ModelChoiceField(
                 initial=[user.id for user in self.users],
                 widget=forms.SelectMultiple(
                     attrs={'class': 'user-select'}),
                 queryset=User.objects.all().order_by('username'),
                 empty_label=None)
-            if self.case:
-                initial = self.case.id
-            else:
-                initial = ''
-            case = forms.ModelChoiceField(
-                initial=[self.case.id if self.case else 0],
-                widget=forms.Select(
-                    attrs={'class': 'case-select'}),
-                queryset=Case.objects.all().order_by('name'),)
         return EditForm()
 
 
@@ -90,8 +83,7 @@ class UserProfile(models.Model):
     profile_type = models.CharField(max_length=12, choices=PROFILE_CHOICES)
     cohort = models.ForeignKey(
         Cohort,
-        related_name="user_profile_cohort",
-        default=1)
+        related_name="user_profile_cohort")
 
     def edit_form(self):
         class EditForm(forms.Form):
@@ -167,12 +159,6 @@ class CreateHierarchyForm(forms.Form):
             attrs={'class': 'add-hierarchy-name',
                    'required': True}))
 
-    url = forms.CharField(
-        required=True,
-        widget=forms.widgets.Input(
-            attrs={'class': 'add-hierarchy-url', 'required': True}),
-        label=mark_safe('<strong>Url - the base url for your case.</strong>'))
-
 
 class Case(models.Model):
     name = models.CharField(max_length=255, blank=False)
@@ -188,6 +174,20 @@ class Case(models.Model):
     def display_name(self):
         return '%s' % (self.name)
 
+    def _get_cohorts(self):
+        cohorts = Cohort.objects.filter(case_cohort=self.id)
+        return cohorts
+
+    def cohortnames(self):
+        if self.cohort.all():
+            cohortnames = [cohort.name.encode(
+                encoding='UTF-8',
+                errors='strict') for cohort in self.cohorts]
+            nms = ', '.join(cohortnames)
+            return nms
+
+    cohorts = property(_get_cohorts)
+
     @classmethod
     def add_form(cls):
         class AddForm(forms.Form):
@@ -202,6 +202,28 @@ class Case(models.Model):
                     attrs={'class': 'cohort-select'}),
                 queryset=Cohort.objects.all().order_by('name'),)
         return AddForm()
+
+    def edit_form(self):
+        class EditForm(forms.Form):
+            name = forms.CharField(
+                widget=forms.widgets.Input(
+                    attrs={'class': 'add-case-name'}),
+                initial=self.name
+            )
+
+            hierarchy = forms.ModelChoiceField(
+                initial=self.hierarchy,
+                widget=forms.Select(
+                    attrs={'class': 'hierarchy-select'}),
+                queryset=Hierarchy.objects.all().order_by('name'),)
+
+            cohort = forms.ModelChoiceField(
+                initial=[cohort.id for cohort in self.cohort.all()],
+                widget=forms.SelectMultiple(
+                    attrs={'class': 'cohort-select'}),
+                queryset=Cohort.objects.all().order_by('name'),)
+
+        return EditForm()
 
 
 class CaseMap(models.Model):
@@ -255,13 +277,6 @@ class CaseMap(models.Model):
             self.save()
 
 
-class CustomSelectWidgetAD(widgets.Select):
-    def render(self, name, value, attrs=None):
-        return mark_safe(
-            u'''<span>After Decision</span>%s''' %
-            (super(CustomSelectWidgetAD, self).render(name, value, attrs)))
-
-
 class CustomSelectWidgetAC(widgets.Select):
     def render(self, name, value, attrs=None):
         return mark_safe(
@@ -271,8 +286,7 @@ class CustomSelectWidgetAC(widgets.Select):
 
 class TextBlockDT(TextBlock):
     template_file = "pageblocks/textblock.html"
-    display_name = "Text BlockDT"
-    after_decision = models.CharField(max_length=2, blank=True, default=0)
+    display_name = "Text Block"
     choice = models.CharField(max_length=2, blank=True, default=0)
 
     @classmethod
@@ -286,9 +300,6 @@ class TextBlockDT(TextBlock):
                 default=0)
             body = forms.CharField(
                 widget=CKEditorWidget(attrs={"id": "editor"}))
-            after_decision = forms.ChoiceField(
-                choices=CHOICES,
-                widget=CustomSelectWidgetAD)
             choice = forms.ChoiceField(
                 choices=CHOICES,
                 widget=CustomSelectWidgetAC)
@@ -298,7 +309,6 @@ class TextBlockDT(TextBlock):
     def create(cls, request):
         return TextBlockDT.objects.create(
             body=request.POST.get('body', ''),
-            after_decision=request.POST.get('after_decision', ''),
             choice=request.POST.get('choice', ''),
             )
 
@@ -310,10 +320,6 @@ class TextBlockDT(TextBlock):
             body = forms.CharField(
                 widget=CKEditorWidget(attrs={"id": EDITOR}),
                 initial=self.body)
-            after_decision = forms.ChoiceField(
-                choices=CHOICES,
-                widget=CustomSelectWidgetAD,
-                initial=self.after_decision)
             choice = forms.ChoiceField(
                 choices=CHOICES,
                 initial=self.choice,
@@ -322,7 +328,6 @@ class TextBlockDT(TextBlock):
 
     def edit(self, vals, files):
         self.body = vals.get('body', '')
-        self.after_decision = vals.get('after_decision', '')
         self.choice = vals.get('choice', '')
         self.save()
 

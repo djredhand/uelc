@@ -90,7 +90,6 @@ class CohortTest(TestCase):
     def test_add_form(self):
         add_form = CohortFactory().add_form()
         self.assertTrue('name' in add_form.fields)
-        self.assertTrue('user' in add_form.fields)
 
     def test_edit_form(self):
         cohort = CohortFactory()
@@ -98,7 +97,6 @@ class CohortTest(TestCase):
         case.cohort.add(cohort)
         edit_form = cohort.edit_form()
         self.assertTrue('name' in edit_form.fields)
-        self.assertTrue('case' in edit_form.fields)
 
 
 class CaseTest(TestCase):
@@ -135,15 +133,10 @@ class TextBlockDTTest(TestCase):
 
     def test_save(self):
         t = TextBlockDTFactory()
-#         vals = dict(body="a new body",
-#                     after_decision="new after decision",
-#                     choice="new choice")
         vals = dict(body="a new body",
-                    after_decision="1",
                     choice="2")
         t.edit(vals, None)
         self.assertEqual(t.body, "a new body")
-        self.assertEqual(t.after_decision, "1")
         self.assertEqual(t.choice, "2")
 
     def test_summary_render_short(self):

@@ -1,9 +1,11 @@
+import factory
 from django.contrib.auth.models import User
+
 from pagetree.models import Hierarchy
+
 from uelc.main.models import (
     Cohort, UserProfile, Case, CaseMap, TextBlockDT, UELCHandler,
     LibraryItem, CaseQuiz)
-import factory
 
 
 class CohortFactory(factory.DjangoModelFactory):
@@ -14,8 +16,9 @@ class CohortFactory(factory.DjangoModelFactory):
 class AdminUserFactory(factory.DjangoModelFactory):
     FACTORY_FOR = User
     username = factory.Sequence(lambda n: "user%03d" % n)
-    is_staff = True
+    is_superuser = True
     first_name = 'admin user'
+    password = factory.PostGenerationMethodCall('set_password', 'test')
 
 
 class FacilitatorUserFactory(factory.DjangoModelFactory):
@@ -35,12 +38,14 @@ class GroupUserFactory(factory.DjangoModelFactory):
 class AdminUpFactory(factory.DjangoModelFactory):
     FACTORY_FOR = UserProfile
     user = factory.SubFactory(AdminUserFactory)
+    cohort = factory.SubFactory(CohortFactory)
     profile_type = 'admin'
 
 
 class FacilitatorUpFactory(factory.DjangoModelFactory):
     FACTORY_FOR = UserProfile
     user = factory.SubFactory(FacilitatorUserFactory)
+    cohort = factory.SubFactory(CohortFactory)
     profile_type = 'assistant'
 
 
