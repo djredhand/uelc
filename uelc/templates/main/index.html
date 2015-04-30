@@ -1,41 +1,135 @@
 {% extends 'base.html' %}
+{% block title %} | Start Page{% endblock %}
 
 {% block content %}
 
 {% if not request.user.is_anonymous %}
 
-    <h1>Choose Your Case</h1>
+    <h1 class="username-start-header" style="
+    text-transform: capitalize;">
+    {% if request.user.last_name %}{{request.user.first_name}} {{request.user.last_name}}{% else %}{{ request.user.username }}{% endif %}'s Start Page</h1>
+    
+    <p class="badge">Cohort: {{ request.user.profile.cohort}}</p>
+    
+    <p></p>
     
     <div class="well">
-        <h2>Case List</h2>
+       {% if cases %}
+        <h2>Group Leader Case List</h2>
+        <p>Select a case for your group to experience.</p>
         <ul class="case-index-list">
-            {% for root in roots %}
-            {% ifnotequal root.0 '/' %}
-            <li><a href="{{ root.0 }}">{{root.1}}</a></li>
-            {% endifnotequal %}
+            {% for case in cases %}
+                <li><a href="{{ case.hierarchy.base_url }}">{{case.name}}</a> - {{case.description}}</li>
             {% endfor %}
         </ul>
+        {% else %}
+        <h2>Sorry.</h2>
+        <p>It looks like you have not been assigned to a cohort or case. Please let the administrator know.</p>
+        {% endif %}
     </div>
     
     {% ifnotequal request.user.profile.profile_type  'group_user'  %}
-    
+    {% if cases %}
     <div class="admin-section well">
-        <h2>Case Control for Facilitator</h2>
+        <h2>Facilitator Case Control</h2>
+        <p>Select a case to facilitate the experience for a group.</p>
         <ul>
-            {% for root in roots %}
-            {% ifnotequal root.0 '/' %}
-            <li><a href="{{ root.0 }}facilitator/">{{root.1}}</a></li>
-            {% endifnotequal %}
+            {% for case in cases %}
+                <li><a href="{{ case.hierarchy.base_url }}facilitator/">{{case.name}}</a> - {{case.description}}</li>
             {% endfor %}
         </ul>
     </div>
+    {% endif %}
     {% endifnotequal %}
+    
+
+    {% if messages %}
+      {% for message in messages %}
+      {% if message.level_tag == 'error' %}
+        <div id="message-modal" class="modal fade" data-callback="{{message.extra_tags}}">
+          <div class="modal-dialog">
+              <div class="modal-content">
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                  <div class="modal-header panel-heading">Message</div>
+                  <div class="modal-body bg-danger">
+                    <div id="edit-user" class="panel panel-default">
+                      <div class="panel-heading">{{ message.level_tag }}</div>
+                      <div class="panel-body">
+                            {{ message }}
+                      </div>
+                    </div><!--end #hierarchiess-->
+                    </div> <!--end modal-dialog-->
+              </div><!-- end modal-content-->
+          </div><!--end .model-body-->
+        </div><!--end #add-hierarchy-form-modal .modal-->
+      {% endif %}
+
+      {% if message.level_tag == 'success' %}
+        <div id="message-modal" class="modal fade" data-callback="{{message.extra_tags}}">
+          <div class="modal-dialog">
+              <div class="modal-content">
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                  <div class="modal-header panel-heading">Message</div>
+                  <div class="modal-body bg-success">
+                    <div id="edit-user" class="panel panel-default">
+                      <div class="panel-heading">{{ message.level_tag }}</div>
+                      <div class="panel-body">
+                            {{ message }}
+                      </div>
+                    </div><!--end #hierarchiess-->
+                    </div> <!--end modal-dialog-->
+              </div><!-- end modal-content-->
+          </div><!--end .model-body-->
+        </div><!--end #add-hierarchy-form-modal .modal-->
+      {% endif %}
+     {% endfor %}
+
+     <script>
+    jQuery(document).ready(function(){
+      if (jQuery('#message-modal').length > 0) {
+          window.modal = jQuery('#message-modal');
+          window.callback = modal.attr('data-callback');
+          modal.modal('show');
+      }
+    })
+    </script>
+    {% endif %}
     
 {% else %}
 
 <div class="jumbotron text-center">
+
     <img style="margin-bottom: 20px;" class="img-responsive" src="{{STATIC_URL}}img/logo-jumbotron.png" />
-    <p><a class="btn btn-success btn-lg" href="about.html" role="button">Learn More</a></p>
+    
+    {% if request.user.is_anonymous %}
+    {% block loginbox %}
+    <div class="row well" style="color: black;">
+    {% if login_form.errors %}
+    <p class="alert alert-danger">
+    <strong>Oops!</strong> Invalid username or password (note that both username and password are case-sensitive). For additional help, please contact UELC.
+    </p>
+    {% endif %}
+    
+    <form id="login-local" name="login_local" method="post" action="/accounts/login/">
+    {% csrf_token %}
+    
+    <label for="id_username">Username:</label> {{ login_form.username }}
+    
+    <label for="id_password">Password:</label> {{ login_form.password }}
+    
+    <input class="btn btn-default" type="submit" value="Sign In" />                        
+    <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+    
+    </form>
+    
+    </div>
+    {% endblock %}
+    {% endif %}
+    {% block sidenav %}{% endblock %}
+    {% comment %}
+    {% block library %}{% endblock %}
+    {% endcomment %}
+    
 </div>
 
 <div class="row">
@@ -43,21 +137,21 @@
     <img class="img-responsive img-rounded" src="{{STATIC_URL}}img/smallgroup.jpg" />
     <h2>Engagement</h2>
     <p>
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec dui arcu, condimentum vitae feugiat eget, convallis non ipsum.
+    Each experience includes a multimedia narrative of an educational leader placed in a high stakes situation. Participants must take into account data regarding important stakeholders, respond to unexpected events and make the best decision given the circumstances.
     </p>
 </div>
 <div class="col-md-4 text-center">
     <img class="img-responsive img-rounded" src="{{STATIC_URL}}img/facilitator.jpg" />
     <h2>Leadership</h2>
     <p>
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec dui arcu, condimentum vitae feugiat eget, convallis non ipsum.
+    Each experience includes a compelling narrative written by the Urban Education Leadership Collaborative at Teachers College Columbia University and vetted by experienced education leaders from around the country.
     </p>
 </div>
 <div class="col-md-4 text-center">
     <img class="img-responsive img-rounded" src="{{STATIC_URL}}img/experts.jpg" />
     <h2>Discussion</h2>
     <p>
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec dui arcu, condimentum vitae feugiat eget, convallis non ipsum.
+    ELDEX content is responsive to decisions made by participants in small discussion groups. At key decision points in the narrative, participants discuss the status of situation and submit a choice. Contextual content is revealed in response to the choice made by the group.
     </p>
 </div>
 </div>

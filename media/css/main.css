@@ -13,11 +13,19 @@ body > .container {
   background-color: #fff;
   min-height: 75%;
   padding-top: 75px;
-}
 
+}
+form.decision-block {margin-bottom: 20px;}
 footer {padding-top: 20px;}
 
-.jumbotron {background-image: url(../img/group.jpg); color: #fff;}
+a.active{
+    font-weight: bold;
+    color: #000;
+}
+
+.jumbotron {background-image: url(../img/group.jpg); color: #fff;
+background-position: -350px bottom; 
+}
 
 #content {
   min-height: 100%;
@@ -164,12 +172,62 @@ footer {padding-top: 20px;}
 }
 
 ul.side-nav {
-    margin-top: 20px;
+    margin: 20px 0 20px 20px;
+    float: right;
 }
 
 ul.side-nav li li {
     margin-left: -25px;
 }
+
+
+.dropdown-submenu {
+    position:relative;
+}
+.dropdown-submenu>.dropdown-menu {
+    top:0;
+    left:100%;
+    margin-top:-6px;
+    margin-left:-1px;
+    -webkit-border-radius:0 6px 6px 6px;
+    -moz-border-radius:0 6px 6px 6px;
+    border-radius:0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+    display:block;
+}
+.dropdown-submenu>a:after {
+    display:block;
+    content:" ";
+    float:right;
+    width:0;
+    height:0;
+    border-color:transparent;
+    border-style:solid;
+    border-width:5px 0 5px 5px;
+    border-left-color:#cccccc;
+    margin-top:5px;
+    margin-right:-10px;
+}
+.dropdown-submenu:hover>a:after {
+    border-left-color:#ffffff;
+}
+.dropdown-submenu.pull-left {
+    float:none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+    left:-100%;
+    margin-left:10px;
+    -webkit-border-radius:6px 0 6px 6px;
+    -moz-border-radius:6px 0 6px 6px;
+    border-radius:6px 0 6px 6px;
+}
+
+/* Add Pageblock  */
+#add-pageblock-tab ul {
+	list-style-type: none;
+}
+
 
 /* Overrides  */
 .col-md-2{
@@ -217,9 +275,11 @@ ul.gate-section-list{
 .gate-section{
     float: left
 }
-.gate-button{
-    margin: 6px;
-}
+
+.gate-button {}
+.gate-button form{}
+.preview-page{}
+
 .glyphicon-trash, .glyphicon-edit{
     cursor: pointer;
 }
@@ -228,6 +288,11 @@ ul.gate-section-list{
 }
 .has-error{
     color:#a94442;
+}
+
+.edit-delete-links{
+    float: right;
+    margin: -39px 0 0 0;
 }
 
 /* Discussion for submitted quizzes */
@@ -245,21 +310,40 @@ ul.gate-section-list{
 /* facilitator page */
 .btn-block.btn-incomplete{
     background: #d9534f;
-    border-color: #d43f3a;
     color: #fff;
 }
 .btn-block.btn-incomplete .badge{
     background: #fff;
     color:#d9534f;
 }
-.btn-block.btn-waiting{
+.status-waiting{
     background: #fcf8e3;
     border-color: #faebcc;
     color: #8a6d3b;
 }
-.btn-block.btn-waiting .badge{
-    background: #fff;
-    color:#8a6d3b;
+.status-waiting:hover{
+    background: #fcf8e3 !important;
+    border-color: #faebcc !important;
+    color: #8a6d3b !important;
+}
+.status-waiting .badge{
+    background: #fcf8e3;
+    border-color: #faebcc;
+    color: #8a6d3b;
+}
+.status-completed:hover{
+    background-color: #5cb85c !important;
+    border-color: #4cae4c !important;
 }
 
+.progress {
+  height: inherit;
+  margin-bottom: 0px;
+  background-color: #fc6;
+  -webkit-box-shadow: none;
+  box-shadow:  none;
+}
 
+.decision-block{
+    clear: right;
+}

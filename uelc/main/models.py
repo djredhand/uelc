@@ -1,19 +1,23 @@
-from django.db import models
 from django import forms
+from django.db import models
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User, Permission
+from django.core.exceptions import ObjectDoesNotExist
 from django.forms import widgets
 from django.utils.safestring import mark_safe
-from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
-from pagetree.models import Hierarchy, Section, ReportableInterface
+from django.core.urlresolvers import reverse
 from ckeditor.widgets import CKEditorWidget
-from pageblocks.models import TextBlock
-from quizblock.models import Quiz, Question, Submission, Response, Answer
 from gate_block.models import GateSubmission
-from django.core.exceptions import ObjectDoesNotExist
+from pageblocks.models import TextBlock
+from pagetree.models import Hierarchy, Section, ReportableInterface
+from quizblock.models import Quiz, Question, Submission, Response, Answer
 
 
 class Cohort(models.Model):
-    name = models.CharField(max_length=255, blank=False)
+    name = models.CharField(
+        max_length=255,
+        blank=False,
+        unique=True)
 
     def __unicode__(self):
         return self.name
@@ -74,7 +78,6 @@ class Cohort(models.Model):
 
 class UserProfile(models.Model):
     PROFILE_CHOICES = (
-        (None, '--------'),
         ('admin', 'Administrator'),
         ('assistant', 'Assistant'),
         ('group_user', 'Group User'),
@@ -83,7 +86,9 @@ class UserProfile(models.Model):
     profile_type = models.CharField(max_length=12, choices=PROFILE_CHOICES)
     cohort = models.ForeignKey(
         Cohort,
-        related_name="user_profile_cohort")
+        related_name="user_profile_cohort",
+        blank=True,
+        null=True)
 
     def edit_form(self):
         class EditForm(forms.Form):
@@ -103,6 +108,15 @@ class UserProfile(models.Model):
                     attrs={'class': 'cohort-select'}),
                 queryset=Cohort.objects.all().order_by('name'),)
         return EditForm()
+
+    def set_image_upload_permissions(self, user):
+        permission_set = Permission.objects.filter(
+            content_type__name="image upload item")
+        for perm in permission_set:
+            if user.is_staff:
+                user.user_permissions.add(perm.pk)
+            else:
+                user.user_permissions.remove(perm.pk)
 
     def __unicode__(self):
         return self.user.username
@@ -128,7 +142,8 @@ class CreateUserForm(UserCreationForm):
         required=True,
         widget=forms.Select(
             attrs={'class': 'create-user-profile', 'required': True}),
-        choices=UserProfile.PROFILE_CHOICES)
+        choices=UserProfile.PROFILE_CHOICES,
+        initial='group_user')
     cohort = forms.ModelChoiceField(
         widget=forms.Select(
             attrs={'class': 'cohort-select'}),
@@ -160,8 +175,20 @@ class CreateHierarchyForm(forms.Form):
                    'required': True}))
 
 
+class EditUserPassForm(forms.Form):
+    newPassword1 = forms.CharField(
+        label="Password",
+        widget=forms.PasswordInput(
+            attrs={'class': 'new-user-password1', 'type': 'password', }))
+    newPassword2 = forms.CharField(
+        label="Password",
+        widget=forms.PasswordInput(
+            attrs={'class': 'new-user-password2', 'type': 'password', }))
+
+
 class Case(models.Model):
     name = models.CharField(max_length=255, blank=False)
+    description = models.TextField(blank=True, null=True)
     hierarchy = models.ForeignKey(Hierarchy)
     cohort = models.ManyToManyField(
         Cohort,
@@ -193,6 +220,8 @@ class Case(models.Model):
         class AddForm(forms.Form):
             name = forms.CharField(widget=forms.widgets.Input(
                 attrs={'class': 'add-case-name'}))
+            description = forms.CharField(widget=forms.widgets.Textarea(
+                attrs={'class': 'add-case-description'}))
             hierarchy = forms.ModelChoiceField(
                 widget=forms.Select(
                     attrs={'class': 'hierarchy-select'}),
@@ -209,6 +238,12 @@ class Case(models.Model):
                 widget=forms.widgets.Input(
                     attrs={'class': 'add-case-name'}),
                 initial=self.name
+            )
+
+            description = forms.CharField(
+                widget=forms.widgets.Textarea(
+                    attrs={'class': 'add-case-description'}),
+                initial=self.description
             )
 
             hierarchy = forms.ModelChoiceField(
@@ -237,12 +272,11 @@ class CaseMap(models.Model):
         return self.value
 
     def set_value(self, quiz, data):
-        val = self.save_value(quiz, data)
+        val = self.save_value(quiz.pageblock().section, data)
         self.value = val
         self.save()
 
-    def save_value(self, quiz, data):
-        section = quiz.pageblock().section
+    def save_value(self, section, data):
         case_depth = len(section.get_tree())
         count = 0
         section_depth = 0
@@ -280,7 +314,10 @@ class CaseMap(models.Model):
 class CustomSelectWidgetAC(widgets.Select):
     def render(self, name, value, attrs=None):
         return mark_safe(
-            u'''<span>After Choice</span>%s''' %
+            u'''<span class="after-choice">After Choice - \
+                <span class="small">the content that will \
+                show for the decision made. This is \
+                cohort-wide.</span></span>%s''' %
             (super(CustomSelectWidgetAC, self).render(name, value, attrs)))
 
 
@@ -366,6 +403,8 @@ class UELCHandler(Section):
         part = 1
         if len(vals) >= 2:
             part = float(2) + (vals[1] * .1)
+        if len(vals) >= 4:
+            part = part + float((vals[3] * .01))
         return part
 
     def get_p1c1(self, casemap_value):
@@ -389,7 +428,7 @@ class UELCHandler(Section):
     def can_show_gateblock(self, gate_section, part_usermap):
         can_show = False
         part_section = self.get_part_by_section(gate_section)
-        if part_section == 1 or part_section == part_usermap:
+        if part_section == 1 or part_section == round(part_usermap, 1):
             can_show = True
         return can_show
 
@@ -488,10 +527,16 @@ class CaseQuiz(Quiz):
     def add_form(cls):
         class AddForm(forms.Form):
             description = forms.CharField(widget=forms.widgets.Textarea())
-            rhetorical = forms.BooleanField()
-            allow_redo = forms.BooleanField()
-            show_submit_state = forms.BooleanField(initial=True)
         return AddForm()
+
+    def edit_form(self):
+        class EditForm(forms.Form):
+            description = forms.CharField(
+                widget=forms.widgets.Textarea(),
+                initial=self.description)
+            alt_text = ("<a href=\"" + reverse("edit-quiz", args=[self.id])
+                        + "\">manage decision/choices</a>")
+        return EditForm()
 
     def is_q_answered(self, data):
         for k in data.keys():
@@ -561,18 +606,33 @@ class CaseQuiz(Quiz):
                     if obj.display_name == "Gate Block":
                         unlocked = obj.unlocked(user, section)
             is_quiz_submitted = self.is_submitted(self, user)
-            if not (unlocked and is_quiz_submitted):
-                unlocked = False
-                upv.status = 'complete'
-                upv.save()
-            else:
-                upv.status = 'complete'
-                upv.save()
-                unlocked = True
+            if upv:
+                if not (unlocked and is_quiz_submitted):
+                    unlocked = False
+                    upv.status = 'complete'
+                    upv.save()
+                else:
+                    upv.status = 'complete'
+                    upv.save()
+                    unlocked = True
         return unlocked
 
 
+class CaseQuestion(models.Model):
+    quiz = models.ForeignKey(Quiz)
+    question_type = models.CharField(
+        max_length=256,
+        choices=(
+            ("single choice", "Multiple Choice: Single answer"),
+        ))
+    explanation = models.TextField(blank=True)
+    intro_text = models.TextField(blank=True)
+
+
 class CaseAnswer(models.Model):
+    def default_question(self):
+        return self.answer.question.id
+
     answer = models.ForeignKey(Answer)
     title = models.TextField(blank=True)
     description = models.TextField(blank=True)
@@ -588,9 +648,9 @@ class CaseAnswer(models.Model):
 
 
 class CaseAnswerForm(forms.Form):
-    value = forms.IntegerField()
-    title = forms.CharField(max_length=100)
-    description = forms.CharField(widget=forms.Textarea)
+    value = forms.IntegerField(required=True, min_value=1)
+    title = forms.CharField(max_length=100, required=True)
+    description = forms.CharField(widget=forms.Textarea, required=True)
 
 
 ReportableInterface.register(CaseQuiz)

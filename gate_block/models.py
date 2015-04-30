@@ -1,9 +1,9 @@
-from django.db import models
 from datetime import datetime
-from django.contrib.auth.models import User
-from pagetree.models import PageBlock, Section, UserLocation
-from django.contrib.contenttypes import generic
 from django import forms
+from django.db import models
+from django.contrib.auth.models import User
+from django.contrib.contenttypes import generic
+from pagetree.models import PageBlock, Section, UserLocation
 
 
 class GateBlock(models.Model):
@@ -36,7 +36,6 @@ class GateBlock(models.Model):
             gate_user_id=user.id).count() > 0
 
     def status(self, user, hierarchy):
-
         gate_section = self.pageblock().section
         h_url = hierarchy.get_absolute_url()
         gs_url = gate_section.get_absolute_url()

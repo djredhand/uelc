@@ -34,7 +34,7 @@ jQuery(document).ready(function() {
       };
 
       this.formUpdate = function(form) {
-          console.log(form);
+          //console.log(form);
       };
 
       this.highlight = function(element) {
@@ -69,6 +69,15 @@ jQuery(document).ready(function() {
                     minlength: 3,
                     required: true,
                     equalTo : '#id_password1',
+                  },
+                  newPassword1:{
+                    minlength: 3,
+                    required: true,
+                  },
+                  newPassword2:{
+                    minlength: 3,
+                    required: true,
+                    equalTo : '#id_newPassword1',
                   },
                   user: 'required',
                   hierarchy: 'required',
@@ -253,7 +262,7 @@ jQuery(document).ready(function() {
           var urlArray = loc.split('/');
           var page = urlArray[urlArray.length - 2];
           var activeLi = jQuery('li[data-tab="' + page + '"]');
-          console.log(activeLi);
+          //console.log(activeLi);
           jQuery('#uelc-admin-menu ul li').each(function() {
               jQuery(this).removeClass('active');
           });

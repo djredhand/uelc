@@ -1,4 +1,4 @@
-{% extends "pagetree/base_pagetree.html" %}
+{% extends "base.html" %}
 {% load compress %}
 {% load bootstrap %}
 {% load render %}
@@ -24,7 +24,6 @@
   .dragging {background-color: #fee;}
   </style>
 {% endcompress %}
-
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/jquery-ui.min.js"></script>
   <script src="{{STATIC_URL}}ckeditor/ckeditor/ckeditor.js"></script>
@@ -35,8 +34,10 @@
 var wysiwyg = jQuery('[id^=editor]').ckeditor({
     //filebrowserUploadUrl: '/uploads/',
     filebrowserBrowseUrl: '/admin/main/imageuploaditem/',
-    allowedContent: true
+    allowedContent: true,
+    autofocus: true,
   });
+
 //wysiwyg.config.allowedContent = true;
 var saveOrderOfChildren = function() {
     var url = "{% url 'reorder-section-children' section.id %}?";
@@ -242,15 +243,13 @@ $(function() {
   </div>
   <div class="modal-body">
 
-{% if block.block.importable %}
-<a href="{% url 'import-pageblock-json' block.id %}">import json</a>
-{% endif %}
-
 <form action="{% url 'edit-pageblock' block.id %}" method="post"
 class=""
 {% if block.edit_form.is_multipart %}enctype="multipart/form-data"{% endif %}>{% csrf_token %}
-
-{{ block.default_edit_form|bootstrap }}
+  {% if block.block.display_name == "Decision Block" %}
+  {% else %}
+    {{ block.default_edit_form|bootstrap }}
+  {% endif %}
 {% with block.edit_form as ef %}
 {{ ef|bootstrap }}
 {% if ef.alt_text %}
@@ -306,12 +305,25 @@ class=""
 
 <div id="add-pageblock-tab" class="tab-pane">
 
-<ul>
-{% for blocktype in available_pageblocks %}
-<li><a data-toggle="modal"
-       href="#add-block-{{forloop.counter}}">Add {{blocktype.display_name}}</a></li>
-{% endfor %}
-</ul>
+  <ul>
+  {% for blocktype in available_pageblocks %}
+    <li><a data-toggle="modal"
+         href="#add-block-{{forloop.counter}}">Add {{blocktype.display_name}}</a>
+    {% if blocktype.display_name == "Text Block" %}
+      <span class="pull-right block_description">Add a section of text to your case page. May be used more than once per page.</span>
+    {% endif %}
+    {% if blocktype.display_name == "Image Block" %}
+      <span class="pull-right block_description">Add an image with caption to your case page. May be used more than once per page.</span>
+    {% endif %}
+    {% if blocktype.display_name == "Decision Block" %}
+      <span class="pull-right block_description">Add a decision point to your case page. Use once per page.</span>
+    {% endif %}
+    {% if blocktype.display_name == "Gate Block" %}
+      <span class="pull-right block_description">Gate content for release by case assistants. Use once per page.</span>
+    {% endif %}
+    </li>
+  {% endfor %}
+  </ul>
 
 {% for blocktype in available_pageblocks %}
 {% if blocktype %}
@@ -334,10 +346,15 @@ method="post">{% csrf_token %}
   <div class="modal-body">
 <fieldset>
 <input type="hidden" name="blocktype" value="{{blocktype.display_name}}"/>
-
-{{section.add_pageblock_form|bootstrap}}
-{{blocktype.add_form|bootstrap}}
-
+<div id="block-form-{{ forloop.counter }}">
+  {% if blocktype.display_name == "Decision Block" %}
+    {{blocktype.add_form|bootstrap}}
+  {% else %}
+    {{section.add_pageblock_form|bootstrap}}
+    {{blocktype.add_form|bootstrap}}
+  {% endif %}
+</div>
+  
 </fieldset>
 
 
@@ -442,22 +459,93 @@ method="post">{% csrf_token %}
 <script>
 jQuery(document).ready(function(){
   jQuery('.form-control').click(function(){
-    elem = jQuery(this)
+    elem = jQuery(this);
     if(elem.createTextRange) {
-            var range = elem.createTextRange();
-            range.move('character', caretPos);
-            range.select();
+      var range = elem.createTextRange();
+      range.move('character', caretPos);
+      range.select();
+    }
+    else if(elem.selectionStart) {
+      elem.focus();
+      elem.setSelectionRange(caretPos, caretPos);
+    }else{
+        elem.focus();
+    }//end if
+  });// end .click
+  if(CKEDITOR){
+    for(var id in CKEDITOR.instances) {
+      CKEDITOR.instances[id].on('mode', function(event) {
+        
+        var editor = event.editor;
+        window.editor = editor;
+        if(typeof(editor) !== 'undefined') {
+           editor.focus();
+
+           var element = editor.element;
+           var range = editor.createRange();
+           if(range) {
+              range.moveToElementEditablePosition(element, false);
+              range.select();
+           }
         }
-        else {
-            if(elem.selectionStart) {
-                elem.focus();
-                elem.setSelectionRange(caretPos, caretPos);
-            }
-            else
-                elem.focus();
-        }
-  })
+
+
+      });//end .on
+      
+    }//end for
+  }//end if CKEDITOR
+});//end doc.ready
+</script>
+{% if messages %}
+  {% for message in messages %}
+  {% if message.level_tag == 'error' %}
+    <div id="message-modal" class="modal fade" data-callback="{{message.extra_tags}}">
+      <div class="modal-dialog">
+          <div class="modal-content">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              <div class="modal-header panel-heading">Message</div>
+              <div class="modal-body bg-danger">
+                <div id="edit-user" class="panel panel-default">
+                  <div class="panel-heading">{{ message.level_tag }}</div>
+                  <div class="panel-body">
+                        {{ message }}
+                  </div>
+                </div><!--end #hierarchiess-->
+                </div> <!--end modal-dialog-->
+          </div><!-- end modal-content-->
+      </div><!--end .model-body-->
+    </div><!--end #add-hierarchy-form-modal .modal-->
+  {% endif %}
+
+  {% if message.level_tag == 'success' %}
+    <div id="message-modal" class="modal fade" data-callback="{{message.extra_tags}}">
+      <div class="modal-dialog">
+          <div class="modal-content">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              <div class="modal-header panel-heading">Message</div>
+              <div class="modal-body bg-success">
+                <div id="edit-user" class="panel panel-default">
+                  <div class="panel-heading">{{ message.level_tag }}</div>
+                  <div class="panel-body">
+                        {{ message }}
+                  </div>
+                </div><!--end #hierarchiess-->
+                </div> <!--end modal-dialog-->
+          </div><!-- end modal-content-->
+      </div><!--end .model-body-->
+    </div><!--end #add-hierarchy-form-modal .modal-->
+  {% endif %}
+ {% endfor %}
+
+ <script>
+jQuery(document).ready(function(){
+  if (jQuery('#message-modal').length > 0) {
+      window.modal = jQuery('#message-modal');
+      window.callback = modal.attr('data-callback');
+      modal.modal('show');
+  }
 })
 </script>
+{% endif %}
 
 {% endblock %}

@@ -48,14 +48,14 @@ PROJECT_APPS = [
     'gate_block',
 ]
 
-ALLOWED_HOSTS = ['localhost', '.ccnmtl.columbia.edu']
+ALLOWED_HOSTS = ['localhost', '.ccnmtl.columbia.edu', 'eldex.org']
 
 USE_TZ = True
 TIME_ZONE = 'America/New_York'
 LANGUAGE_CODE = 'en-us'
 SITE_ID = 1
 USE_I18N = False
-MEDIA_ROOT = "/tmp/"
+MEDIA_ROOT = '/var/www/uelc/uploads/'
 MEDIA_URL = '/uploads/'
 CKEDITOR_UPLOAD_PATH = "uploads/"
 CKEDITOR_IMAGE_BACKEND = "pillow"
@@ -74,7 +74,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'gacontext.ga_processor',
     'djangowind.context.context_processor',
     'django.core.context_processors.static',
-    'django.contrib.messages.context_processors.messages'
+    'django.contrib.messages.context_processors.messages',
+    'django.core.context_processors.media'
 )
 
 MIDDLEWARE_CLASSES = (
@@ -138,7 +139,6 @@ INSTALLED_APPS = [
 ]
 
 PAGEBLOCKS = [
-    'pageblocks.ImageBlock',
     'gate_block.GateBlock',
     'main.TextBlockDT',
     'main.CaseQuiz',
@@ -155,6 +155,8 @@ DEBUG_TOOLBAR_PANELS = (
     'debug_toolbar.panels.sql.SQLDebugPanel',
     'debug_toolbar.panels.signals.SignalDebugPanel',
 )
+IMPERSONATE_REQUIRE_SUPERUSER = False
+
 DEBUG_TOOLBAR_PATCH_SETTINGS = False
 
 STATSD_CLIENT = 'statsd.client'
@@ -215,3 +217,8 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ]
 }
+
+WINDSOCK_BROKER_URL = "tcp://localhost:5555"
+ZMQ_APPNAME = "uelc"
+WINDSOCK_SECRET = "6f1d916c-7761-4874-8d5b-8f8f93d20bf2"
+WINDSOCK_WEBSOCKETS_BASE = "ws://localhost:5050/socket/"
